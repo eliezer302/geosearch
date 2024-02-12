@@ -95,7 +95,7 @@ function Pois() {
 
     return (
         <div id="poisContainer" className="container">
-            <h1 className="text-center">Puntos de interes cerca de Almirante Pastene 244, Providencia.</h1>
+            <h3 className="text-center">Puntos de interes cerca de Almirante Pastene 244, Providencia.</h3>
             { error && <p className="text-danger">{error }</p>}
             <div className="row pois">
                 <div className="col-md-3 categoryList">
