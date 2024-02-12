@@ -3,7 +3,7 @@ La aplicación Georesearch es una plataforma web desarrollada con ReactJS que pe
 
 # Instalación
 Clona el repositorio:
-git clone https://github.com/tu_usuario/georesearch.git
+git clone https://github.com/eliezer302/geosearch.git
 cd georesearch
 
 Instala las dependencias:
