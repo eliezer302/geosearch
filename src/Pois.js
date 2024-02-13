@@ -1,6 +1,11 @@
 import React, { useState, useEffect, useRef } from 'react';
+// Importamos Axios para la gestión de información del serverless
 import axios from 'axios';
+// Importamos los estilos de Bootstrap
 import 'bootstrap/dist/css/bootstrap.min.css';
+// Importamos Leaflet para el uso del mapa
+import leaflet from 'leaflet';
+import 'leaflet/dist/leaflet.css';
 
 function Pois() {
     // Los POIs
@@ -16,24 +21,53 @@ function Pois() {
     const [selectedCategoryNamesTmp, setSelectedCategorieNamesTmp] = useState([]);
     // Errores
     const [error, setError]                                        = useState(null);
+    // Latitud de Almirante Pastene 244, Providencia.
+    const latitude                                                 = -33.4266707;
     // Longitud de Almirante Pastene 244, Providencia.
     const longitude                                                = -70.6202899;
-    // Latitud de Almirante Pastene 244, Providencia.
-    const latitude                                                 = -70.6202899;
     // Parámetros por defecto para la query
     const params                                                   = { longitude: longitude, latitude: latitude };
     // Loading
     const [loading, setLoading]                                    = useState(false);
     // Checkboxes de categorías
     const checkboxesRef                                            = useRef([]);
+    // Referencia para los marcadores
+    const markersRef                                               = useRef(leaflet.layerGroup());
+
+    // Iconos del mapa
+    const markerIcon = leaflet.icon({
+        iconUrl: process.env.PUBLIC_URL + 'map_icons/marker.png',
+        iconSize: [38, 38],
+        iconAnchor: [19, 38],
+        popupAnchor: [0, -30]
+    });
 
     useEffect(() => {
         const fetchData = async () => {
             try {
+                // Iniciamos el mapa
                 const categoriesResponse = await axios.get('https://idnxmednaca5ywjmfx4ctn3w3m0kllpx.lambda-url.us-east-1.on.aws/');
                 setCategories(categoriesResponse.data);
                 const response = await axios.get('https://qvp53axo7e5yqb7aprykzzsqgm0tqizm.lambda-url.us-east-1.on.aws', { params });
                 setPois(response.data);
+            
+                // Iniciamos el mapa
+                const map = leaflet.map('map').setView([latitude, longitude], 17);
+                leaflet.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+                    attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+                }).addTo(map);
+
+                // Agregamos el icono
+                leaflet.marker([latitude, longitude], { icon: markerIcon }).addTo(map).bindPopup('Almirante Pastene 244, Providencia.');
+
+                // Agregamos el grupo de marcadores al mapa
+                markersRef.current.addTo(map);
+
+                // Agregar marcadores para cada POI
+                response.data.forEach(poi => {
+                    let poiIcon = poiMarkers(poi.category_id);
+                    leaflet.marker([poi.latitude, poi.longitude], { icon: poiIcon }).addTo(markersRef.current).bindPopup(poi.name);
+                });
             } catch (error) {
                 setError('Error al obtener los resultados. A01');
             }
@@ -41,6 +75,33 @@ function Pois() {
 
         fetchData();
     }, []);
+
+    const poiMarkers = (category) => {
+        let poiIcon;
+        switch (category) {
+            case 10004:
+                poiIcon = leaflet.icon({ iconUrl: process.env.PUBLIC_URL + 'map_icons/restaurant.png', iconSize: [38, 38], iconAnchor: [19, 38], popupAnchor: [0, -30] });
+                break;
+            case 10008:
+                poiIcon = leaflet.icon({ iconUrl: process.env.PUBLIC_URL + 'map_icons/supermarket.png', iconSize: [38, 38], iconAnchor: [19, 38], popupAnchor: [0, -30] });
+                break;
+            case 10029:
+                poiIcon = leaflet.icon({ iconUrl: process.env.PUBLIC_URL + 'map_icons/coffee-tea.png', iconSize: [38, 38], iconAnchor: [19, 38], popupAnchor: [0, -30] });
+                break;
+            case 10003:
+                poiIcon = leaflet.icon({ iconUrl: process.env.PUBLIC_URL + 'map_icons/bank.png', iconSize: [38, 38], iconAnchor: [19, 38], popupAnchor: [0, -30] });
+                break;
+            case 10084:
+                poiIcon = leaflet.icon({ iconUrl: process.env.PUBLIC_URL + 'map_icons/storage.png', iconSize: [38, 38], iconAnchor: [19, 38], popupAnchor: [0, -30] });
+                break;
+            case 10005:
+                poiIcon = leaflet.icon({ iconUrl: process.env.PUBLIC_URL + 'map_icons/pharmacy.png', iconSize: [38, 38], iconAnchor: [19, 38], popupAnchor: [0, -30] });
+                break;
+            default:
+                poiIcon = markerIcon;
+        }
+        return poiIcon;
+    };
 
     const handleOrderChange = (event) => {
         const selectedOrder = event.target.value;
@@ -71,6 +132,16 @@ function Pois() {
     		}
     		const response = await axios.get('https://qvp53axo7e5yqb7aprykzzsqgm0tqizm.lambda-url.us-east-1.on.aws', { params });
     		setPois(response.data);
+
+            // Limpiar los marcadores existentes en el mapa
+            markersRef.current.clearLayers();
+
+            // Iterar sobre los nuevos POIs filtrados y agregar nuevos marcadores al mapa
+            response.data.forEach(poi => {
+                let poiIcon = poiMarkers(poi.category_id);
+                leaflet.marker([poi.latitude, poi.longitude], { icon: poiIcon }).addTo(markersRef.current).bindPopup(poi.name);
+            });
+
             setLoading(false);
     	} catch (error) {
     		setError('Error fetching data');
@@ -87,6 +158,16 @@ function Pois() {
             params.categories = '';
             const response = await axios.get('https://qvp53axo7e5yqb7aprykzzsqgm0tqizm.lambda-url.us-east-1.on.aws', { params });
             setPois(response.data);
+
+            // Limpiar los marcadores existentes en el mapa
+            markersRef.current.clearLayers();
+
+            // Iterar sobre los nuevos POIs filtrados y agregar nuevos marcadores al mapa
+            response.data.forEach(poi => {
+                let poiIcon = poiMarkers(poi.category_id);
+                leaflet.marker([poi.latitude, poi.longitude], { icon: poiIcon }).addTo(markersRef.current).bindPopup(poi.name);
+            });
+
             setLoading(false);
         } catch (error) {
             setError('Error clearing filters');
@@ -100,12 +181,6 @@ function Pois() {
             <div className="row pois">
                 <div className="col-md-3 categoryList">
 	                <h3 className="mb-3">Categorías</h3>
-                    <div className="d-flex align-items-center mb-3">
-                        <select className="form-select" value={order} onChange={handleOrderChange}>
-                            <option value="ASC">Más cercano</option>
-                            <option value="DESC">Más lejano</option>
-                        </select>
-                    </div>
 	                {categories.map((category, index) => (
 						<div key={index} className="form-check">
 							<input
@@ -121,34 +196,12 @@ function Pois() {
 							</label>
 						</div>
 					))}
-                    <button className="btn btn-primary mt-3" onClick={ filterPois }>Filtrar puntos de interes</button>
+                    <button className="btn btn-primary mt-3" onClick={ filterPois }>Ver puntos de interes</button>
 					<button className="btn btn-danger mt-3" onClick={ clearFilter }>Limpiar filtro</button>
 	            </div>
                 <div className="col-md-9 poisList">
                     <h3>Puntos de interes</h3>
-                    <ul className="list-group mb-3">
-                        { selectedCategoryNames.length > 0 && (
-                            <div>
-                                { selectedCategoryNames.map((category, index) => (
-                                    <span key={ index }>{ category }{ index !== selectedCategoryNames.length - 1 ? ', ' : '.' } </span>
-                                ))}
-                            </div>
-                        )}
-                    </ul>
-                    { loading && (
-                        <div className="d-flex justify-content-center mt-5">
-                            <div className="spinner-border text-primary" role="status">
-                                <span className="visually-hidden">Loading...</span>
-                            </div>
-                        </div>
-                    )}
-                    { !loading && !error && (
-                        <ul className="list-group">
-                            {pois.map((item, index) => (
-                                <li key={ index } className="list-group-item">{ item.name }</li>
-                            ))}
-                        </ul>
-                    )}
+                    <div id="map" style={{ width: '100%', height: '600px' }}></div>
                 </div>
             </div>
         </div>
