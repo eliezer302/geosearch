@@ -14,11 +14,6 @@ function Pois() {
     const [categories, setCategories]                              = useState([]);
     // Los Categorías de POIs seleccionadas para filtrar
     const [selectedCategories, setSelectedCategories]              = useState([]);
-    // Select de orden
-    const [order, setOrder]                                        = useState('ASC');
-    // Los Categorías de POIs seleccionadas para mostrar
-    const [selectedCategoryNames, setSelectedCategorieNames]       = useState([]);
-    const [selectedCategoryNamesTmp, setSelectedCategorieNamesTmp] = useState([]);
     // Errores
     const [error, setError]                                        = useState(null);
     // Latitud de Almirante Pastene 244, Providencia.
@@ -103,66 +98,51 @@ function Pois() {
         return poiIcon;
     };
 
-    const handleOrderChange = (event) => {
-        const selectedOrder = event.target.value;
-        setOrder(selectedOrder);
-        params.order = selectedOrder;
-        filterPois();
-    };
-
-    const categoryChange = (event) => {
-        const category     = event.target.value
-        const categoryName = event.target.dataset.name;
-        const isChecked    = event.target.checked;
-    	if (isChecked) {
-            setSelectedCategories([...selectedCategories, category]);
-    		setSelectedCategorieNamesTmp([...selectedCategoryNamesTmp, categoryName]);
-    	} else {
-            setSelectedCategories(selectedCategories.filter(item => item !== category));
-    		setSelectedCategorieNamesTmp(selectedCategoryNamesTmp.filter(item => item !== categoryName));
-    	}
-    };
-
-    const filterPois = async () => {
-    	try {
-            setSelectedCategorieNames(selectedCategoryNamesTmp);
+     const filterPois = async (event) => {
+        try {
             setLoading(true);
-    		if(selectedCategories.length > 0) {
-    			params.categories = selectedCategories.join(',');
-    		}
-    		const response = await axios.get('https://qvp53axo7e5yqb7aprykzzsqgm0tqizm.lambda-url.us-east-1.on.aws', { params });
-    		setPois(response.data);
+            const category = event.target.value;
+            const isChecked = event.target.checked;
 
-            // Limpiar los marcadores existentes en el mapa
+            checkboxesRef.current.forEach(checkbox => (checkbox.disabled = true));
+
+            const updatedSelectedCategories = isChecked ? [...selectedCategories, category] : selectedCategories.filter(item => item !== category);
+
+            setSelectedCategories(updatedSelectedCategories);
+
+            if (updatedSelectedCategories.length > 0) {
+                params.categories = updatedSelectedCategories.join(',');
+            }
+
+            const response = await axios.get('https://qvp53axo7e5yqb7aprykzzsqgm0tqizm.lambda-url.us-east-1.on.aws', { params });
+            setPois(response.data);
+
             markersRef.current.clearLayers();
 
-            // Iterar sobre los nuevos POIs filtrados y agregar nuevos marcadores al mapa
             response.data.forEach(poi => {
                 let poiIcon = poiMarkers(poi.category_id);
                 leaflet.marker([poi.latitude, poi.longitude], { icon: poiIcon }).addTo(markersRef.current).bindPopup(poi.name);
             });
 
+            checkboxesRef.current.forEach(checkbox => (checkbox.disabled = false));
+
             setLoading(false);
-    	} catch (error) {
-    		setError('Error fetching data');
-    	}
+        } catch (error) {
+            setError('Error fetching data');
+        }
     };
 
     const clearFilter = async () => {
         try {
             setLoading(true);
             setSelectedCategories([]);
-            setSelectedCategorieNames([]);
-            setSelectedCategorieNamesTmp([]);
             checkboxesRef.current.forEach(checkbox => checkbox.checked = false);
             params.categories = '';
             const response = await axios.get('https://qvp53axo7e5yqb7aprykzzsqgm0tqizm.lambda-url.us-east-1.on.aws', { params });
             setPois(response.data);
 
-            // Limpiar los marcadores existentes en el mapa
             markersRef.current.clearLayers();
 
-            // Iterar sobre los nuevos POIs filtrados y agregar nuevos marcadores al mapa
             response.data.forEach(poi => {
                 let poiIcon = poiMarkers(poi.category_id);
                 leaflet.marker([poi.latitude, poi.longitude], { icon: poiIcon }).addTo(markersRef.current).bindPopup(poi.name);
@@ -188,7 +168,7 @@ function Pois() {
                                 type="checkbox"
                                 value={ category.category_id }
                                 id={ `category.category_id-${index}` }
-                                onChange={ categoryChange }
+                                onChange={ (event) => filterPois(event) }
                                 data-name={ category.category_name }
                                 ref={(el) => checkboxesRef.current[index] = el} />
 							<label className="form-check-label" htmlFor={ `category.category_id-${index}` }>
@@ -196,8 +176,7 @@ function Pois() {
 							</label>
 						</div>
 					))}
-                    <button className="btn btn-primary mt-3" onClick={ filterPois }>Ver puntos de interes</button>
-					<button className="btn btn-danger mt-3" onClick={ clearFilter }>Limpiar filtro</button>
+					<button className="btn btn-danger mt-3" onClick={ clearFilter }>Limpiar filtros</button>
 	            </div>
                 <div className="col-md-9 poisList">
                     <h3>Puntos de interes</h3>
