@@ -119,16 +119,10 @@ function Pois() {
         try {
             setLoading(true);
             setSelectedCategories([]);
+
             checkboxesRef.current.forEach(checkbox => checkbox.checked = false);
-            params.categories = '';
-            const response = await axios.get('https://qvp53axo7e5yqb7aprykzzsqgm0tqizm.lambda-url.us-east-1.on.aws', { params });
-            setPois(response.data);
 
             markersRef.current.clearLayers();
-            response.data.forEach(poi => {
-                let poiIcon = poiMarkers(poi.category_id);
-                leaflet.marker([poi.latitude, poi.longitude], { icon: poiIcon }).addTo(markersRef.current).bindPopup(strToTilteCase(poi.name));
-            });
 
             setLoading(false);
         } catch (error) {
