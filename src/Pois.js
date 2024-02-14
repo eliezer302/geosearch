@@ -37,7 +37,6 @@ function Pois() {
                 // Iniciamos el mapa
                 const categoriesResponse = await axios.get('https://idnxmednaca5ywjmfx4ctn3w3m0kllpx.lambda-url.us-east-1.on.aws/');
                 setCategories(categoriesResponse.data);
-                const response = await axios.get('https://qvp53axo7e5yqb7aprykzzsqgm0tqizm.lambda-url.us-east-1.on.aws', { params });
             
                 // Iniciamos el mapa
                 const map = leaflet.map('map').setView([latitude, longitude], 17);
@@ -47,15 +46,8 @@ function Pois() {
 
                 // Agregamos el icono
                 leaflet.marker([latitude, longitude], { icon: markerIcon }).addTo(map).bindPopup('Almirante Pastene 244, Providencia.');
-
                 // Agregamos el grupo de marcadores al mapa
                 markersRef.current.addTo(map);
-
-                // Agregar marcadores para cada POI
-                response.data.forEach(poi => {
-                    let poiIcon = poiMarkers(poi.category_id);
-                    leaflet.marker([poi.latitude, poi.longitude], { icon: poiIcon }).addTo(markersRef.current).bindPopup(strToTilteCase(poi.name));
-                });
             } catch (error) {
                 setError('Error al obtener los resultados. A01');
             }
@@ -95,7 +87,8 @@ function Pois() {
         try {
             setLoading(true);
             checkboxesRef.current.forEach(checkbox => (checkbox.disabled = true));
-            
+            markersRef.current.clearLayers();
+
             const category  = event.target.value;
             const isChecked = event.target.checked;
 
@@ -103,17 +96,18 @@ function Pois() {
             setSelectedCategories(checkboxCategories);
             if (checkboxCategories.length > 0) {
                 params.categories = checkboxCategories.join(',');
+
+                const response = await axios.get('https://qvp53axo7e5yqb7aprykzzsqgm0tqizm.lambda-url.us-east-1.on.aws', { params });
+                setPois(response.data);
+
+                markersRef.current.clearLayers();
+                response.data.forEach(poi => {
+                    let poiIcon = poiMarkers(poi.category_id);
+                    leaflet.marker([poi.latitude, poi.longitude], { icon: poiIcon }).addTo(markersRef.current).bindPopup(strToTilteCase(poi.name));
+                });
+
+                checkboxesRef.current.forEach(checkbox => (checkbox.disabled = false));
             }
-
-            const response = await axios.get('https://qvp53axo7e5yqb7aprykzzsqgm0tqizm.lambda-url.us-east-1.on.aws', { params });
-            setPois(response.data);
-
-            markersRef.current.clearLayers();
-            response.data.forEach(poi => {
-                let poiIcon = poiMarkers(poi.category_id);
-                leaflet.marker([poi.latitude, poi.longitude], { icon: poiIcon }).addTo(markersRef.current).bindPopup(strToTilteCase(poi.name));
-            });
-
             checkboxesRef.current.forEach(checkbox => (checkbox.disabled = false));
             setLoading(false);
         } catch (error) {
