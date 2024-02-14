@@ -9,33 +9,27 @@ import 'leaflet/dist/leaflet.css';
 
 function Pois() {
     // Los POIs
-    const [pois, setPois]                                          = useState([]);
+    const [pois, setPois]                             = useState([]);
     // Los Categorías de POIs
-    const [categories, setCategories]                              = useState([]);
+    const [categories, setCategories]                 = useState([]);
     // Los Categorías de POIs seleccionadas para filtrar
-    const [selectedCategories, setSelectedCategories]              = useState([]);
+    const [selectedCategories, setSelectedCategories] = useState([]);
     // Errores
-    const [error, setError]                                        = useState(null);
+    const [error, setError]                           = useState(null);
     // Latitud de Almirante Pastene 244, Providencia.
-    const latitude                                                 = -33.4266707;
+    const latitude                                    = -33.4266707;
     // Longitud de Almirante Pastene 244, Providencia.
-    const longitude                                                = -70.6202899;
+    const longitude                                   = -70.6202899;
     // Parámetros por defecto para la query
-    const params                                                   = { longitude: longitude, latitude: latitude };
+    const params                                      = { longitude: longitude, latitude: latitude };
     // Loading
-    const [loading, setLoading]                                    = useState(false);
+    const [loading, setLoading]                       = useState(false);
     // Checkboxes de categorías
-    const checkboxesRef                                            = useRef([]);
+    const checkboxesRef                               = useRef([]);
     // Referencia para los marcadores
-    const markersRef                                               = useRef(leaflet.layerGroup());
-
+    const markersRef                                  = useRef(leaflet.layerGroup());
     // Iconos del mapa
-    const markerIcon = leaflet.icon({
-        iconUrl: process.env.PUBLIC_URL + 'map_icons/marker.png',
-        iconSize: [38, 38],
-        iconAnchor: [19, 38],
-        popupAnchor: [0, -30]
-    });
+    const markerIcon                                  = leaflet.icon({ iconUrl: process.env.PUBLIC_URL + 'map_icons/marker.png', iconSize: [38, 38], iconAnchor: [19, 38], popupAnchor: [0, -30] });
 
     useEffect(() => {
         const fetchData = async () => {
@@ -44,7 +38,6 @@ function Pois() {
                 const categoriesResponse = await axios.get('https://idnxmednaca5ywjmfx4ctn3w3m0kllpx.lambda-url.us-east-1.on.aws/');
                 setCategories(categoriesResponse.data);
                 const response = await axios.get('https://qvp53axo7e5yqb7aprykzzsqgm0tqizm.lambda-url.us-east-1.on.aws', { params });
-                setPois(response.data);
             
                 // Iniciamos el mapa
                 const map = leaflet.map('map').setView([latitude, longitude], 17);
@@ -61,7 +54,7 @@ function Pois() {
                 // Agregar marcadores para cada POI
                 response.data.forEach(poi => {
                     let poiIcon = poiMarkers(poi.category_id);
-                    leaflet.marker([poi.latitude, poi.longitude], { icon: poiIcon }).addTo(markersRef.current).bindPopup(poi.name);
+                    leaflet.marker([poi.latitude, poi.longitude], { icon: poiIcon }).addTo(markersRef.current).bindPopup(strToTilteCase(poi.name));
                 });
             } catch (error) {
                 setError('Error al obtener los resultados. A01');
@@ -98,34 +91,30 @@ function Pois() {
         return poiIcon;
     };
 
-     const filterPois = async (event) => {
+    const filterPois = async (event) => {
         try {
             setLoading(true);
-            const category = event.target.value;
+            checkboxesRef.current.forEach(checkbox => (checkbox.disabled = true));
+            
+            const category  = event.target.value;
             const isChecked = event.target.checked;
 
-            checkboxesRef.current.forEach(checkbox => (checkbox.disabled = true));
-
-            const updatedSelectedCategories = isChecked ? [...selectedCategories, category] : selectedCategories.filter(item => item !== category);
-
-            setSelectedCategories(updatedSelectedCategories);
-
-            if (updatedSelectedCategories.length > 0) {
-                params.categories = updatedSelectedCategories.join(',');
+            const checkboxCategories = isChecked ? [...selectedCategories, category] : selectedCategories.filter(item => item !== category);
+            setSelectedCategories(checkboxCategories);
+            if (checkboxCategories.length > 0) {
+                params.categories = checkboxCategories.join(',');
             }
 
             const response = await axios.get('https://qvp53axo7e5yqb7aprykzzsqgm0tqizm.lambda-url.us-east-1.on.aws', { params });
             setPois(response.data);
 
             markersRef.current.clearLayers();
-
             response.data.forEach(poi => {
                 let poiIcon = poiMarkers(poi.category_id);
-                leaflet.marker([poi.latitude, poi.longitude], { icon: poiIcon }).addTo(markersRef.current).bindPopup(poi.name);
+                leaflet.marker([poi.latitude, poi.longitude], { icon: poiIcon }).addTo(markersRef.current).bindPopup(strToTilteCase(poi.name));
             });
 
             checkboxesRef.current.forEach(checkbox => (checkbox.disabled = false));
-
             setLoading(false);
         } catch (error) {
             setError('Error fetching data');
@@ -142,10 +131,9 @@ function Pois() {
             setPois(response.data);
 
             markersRef.current.clearLayers();
-
             response.data.forEach(poi => {
                 let poiIcon = poiMarkers(poi.category_id);
-                leaflet.marker([poi.latitude, poi.longitude], { icon: poiIcon }).addTo(markersRef.current).bindPopup(poi.name);
+                leaflet.marker([poi.latitude, poi.longitude], { icon: poiIcon }).addTo(markersRef.current).bindPopup(strToTilteCase(poi.name));
             });
 
             setLoading(false);
@@ -153,6 +141,13 @@ function Pois() {
             setError('Error clearing filters');
         }
     };
+
+    const strToTilteCase = (str) => {
+        if (!str) {
+            return ""
+        }
+        return str.toLowerCase().replace(/\b\w/g, s => s.toUpperCase());
+    }
 
     return (
         <div id="poisContainer" className="container">
